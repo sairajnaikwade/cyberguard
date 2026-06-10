@@ -178,7 +178,34 @@ To run tests locally:
 .venv\Scripts\pytest.exe --cov=. --cov-report=term-missing tests/
 ```
 
+### Test Execution & Coverage Report
+
+```text
+Name                              Stmts   Miss  Cover   Missing
+---------------------------------------------------------------
+app.py                               73      2    97%   114-115
+celery_worker.py                      7      1    86%   9
+extensions.py                         3      0   100%
+models.py                            92      4    96%   31, 82, 93, 121
+routes/__init__.py                    0      0   100%
+routes/admin.py                      45      0   100%
+routes/auth.py                       62      5    92%   20, 49, 51, 55, 57
+routes/reports.py                    95      0   100%
+routes/scanner.py                   106      1    99%   34
+scanner_engine.py                   201      3    99%   137, 152, 257
+tests/conftest.py                    51      0   100%
+tests/test_advanced_features.py     319      0   100%
+tests/test_auth.py                   30      0   100%
+tests/test_models.py                 35      0   100%
+tests/test_scanner.py                79      0   100%
+---------------------------------------------------------------
+TOTAL                              1198     16    99%
+
+======================= 52 passed, 96 warnings in 8.83s =======================
+```
+
 ---
+
 
 ## CI/CD
 
