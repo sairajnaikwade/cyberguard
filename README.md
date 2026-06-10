@@ -56,7 +56,10 @@ graph TD
 
 ---
 
-## Screenshots
+## Screenshots & Demonstration
+
+* **Project Demonstration (Walkthrough)**:
+  ![CyberGuard Demonstration](docs/recordings/demo.webp)
 
 * **Dashboard (Desktop View)**:
   ![Dashboard Desktop](docs/screenshots/dashboard.png)
@@ -65,6 +68,7 @@ graph TD
   ![Login Portal](docs/screenshots/login.png)
 
 ---
+
 
 ## Installation & Setup
 
