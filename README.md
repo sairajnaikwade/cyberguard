@@ -144,10 +144,8 @@ Writing unit and integration tests with pytest using in-memory databases enables
 * **Dashboard (Mobile View)**:
   ![Dashboard Mobile](docs/screenshots/dashboard_mobile.png)
 
-* **New Scan (Mobile View)**:
-  ![New Scan Mobile](docs/screenshots/new_scan_mobile.png)
-
 ---
+
 
 ## Admin Features
 
@@ -199,46 +197,6 @@ To run tests locally:
 * Multi-target scanning campaigns
 * REST API
 * SIEM integration
-
----
-
-## Resume Bullet Points
-
-* **Engineered an asynchronous network vulnerability scanner** utilizing **Flask 3**, **SQLAlchemy**, and **Celery** with a **Redis** broker, allowing concurrent Nmap scans to execute in background tasks without blocking main web server thread resources.
-* **Integrated threat intelligence pipelines** using the **NIST NVD API v2** for live CVE correlation (supporting v2/v3 scoring fallbacks) and **Shodan API** for gathering geo-location, organization, and host reputation mapping.
-* **Designed a 2-tier caching system** using local SQLite cache mappings, reducing subsequent scan lookup times by over **90%** (from 32s to under 3s) while fully respecting external API rate limits (6s request throttling).
-* **Hardened application endpoints** by applying **Flask-Limiter** rate limits (10/min login, 5/hr registration, 20/hr scanning), implementing custom exception handlers returning unified JSON 429 schemas or flashed HTML messages, and enforcing secure session contexts.
-* **Built a responsive, glassmorphic cyberpunk-themed user interface** using vanilla HTML/CSS/JS and CSS variables, featuring an **Admin Dashboard** for platform metrics, user management, and scan cleanup.
-* **Configured automated scan scheduling** utilizing **APScheduler** background jobs and integrated **SMTP email alert dispatchers** to notify platform users when critical severity vulnerabilities (CVSS >= 9.0) are detected.
-* **Wrote a comprehensive suite of 52 automated tests** with **pytest**, utilizing SQLAlchemy `StaticPool` to achieve **99% overall code coverage** integrated into a **GitHub Actions CI/CD pipeline** validating build health and quality gates.
-
----
-
-## GitHub Release Checklist
-
-Prior to publishing a release, complete the following validation steps:
-
-### 1. Environment Setup
-- [ ] Copy `.env.example` to `.env` and populate variables (`SECRET_KEY`, `DATABASE_URL`, `CELERY_BROKER_URL`, etc.).
-- [ ] Confirm no production credentials or active API keys are hardcoded in the codebase.
-- [ ] Verify `.gitignore` exists and successfully excludes local DB files (`*.db`), `.venv/`, and `.env` files.
-
-### 2. Database Migrations
-- [ ] Verify Flask-Migrate is initialized and any schema updates are checked into `migrations/versions/`.
-- [ ] Run `flask db upgrade` on a clean, backup database instance to verify schema application completes without constraint errors.
-
-### 3. Docker Deployment
-- [ ] Verify that building via `docker compose build --no-cache` completes successfully.
-- [ ] Launch services using `docker compose up -d` and inspect containers status with `docker compose ps` to ensure `cyberguard`, `redis`, and `celery_worker` start without crashing.
-- [ ] Inspect container logs via `docker compose logs` to check for active connections to the database and Redis broker.
-
-### 4. Running Tests
-- [ ] Execute the unit test suite: `.venv\Scripts\pytest.exe --cov=. --cov-report=term-missing tests/`
-- [ ] Confirm all 52 tests pass successfully and code coverage meets or exceeds 99%.
-
-### 5. Security Verification
-- [ ] Verify that Flask-Limiter is enabled and active on registration (`/auth/register`), login (`/auth/login`), and scan (`/scan`) POST endpoints.
-- [ ] Confirm that CORS, CSP, and secure session flags are correctly set for production environments.
 
 ---
 
