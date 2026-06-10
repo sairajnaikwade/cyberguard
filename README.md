@@ -141,10 +141,8 @@ Writing unit and integration tests with pytest using in-memory databases enables
 * **Authentication (Login View)**:
   ![Login Portal](docs/screenshots/login.png)
 
-* **Dashboard (Mobile View)**:
-  ![Dashboard Mobile](docs/screenshots/dashboard_mobile.png)
-
 ---
+
 
 
 ## Admin Features
