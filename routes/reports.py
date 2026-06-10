@@ -37,10 +37,15 @@ def export_csv(scan_id):
                          p['service'], p.get('product', ''), p.get('version', '')])
     writer.writerow([])
 
-    writer.writerow(['CVE', 'PORT', 'SERVICE', 'SEVERITY', 'CVSS', 'DESCRIPTION'])
-    for v in scan.vulns:
-        writer.writerow([v['cve'], v.get('port', ''), v.get('service', ''),
-                         v['severity'], v.get('cvss', ''), v['desc']])
+    writer.writerow(['CVE', 'PORT', 'SERVICE', 'SEVERITY', 'CVSS', 'CONFIDENCE%', 'MATCH TYPE', 'DESCRIPTION'])
+    sorted_vulns = sorted(scan.vulns, key=lambda x: x.get('confidence', 0), reverse=True)
+    for v in sorted_vulns:
+        writer.writerow([
+            v['cve'], v.get('port', ''), v.get('service', ''),
+            v['severity'], v.get('cvss', ''),
+            v.get('confidence', ''), v.get('match_type', 'generic'),
+            v['desc']
+        ])
 
     output.seek(0)
     return send_file(

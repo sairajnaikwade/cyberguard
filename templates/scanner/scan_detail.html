@@ -18,6 +18,38 @@
   <span class="spinner"></span> Scan running — this page updates automatically…
 </div>
 
+{% if scan.status in ('pending', 'running') %}
+<div id="hacker-scan-panel" class="hacker-scan-panel">
+  <div class="radar-box">
+    <div class="radar">
+      <div class="radar-sweep"></div>
+      <div class="radar-circle circle-1"></div>
+      <div class="radar-circle circle-2"></div>
+      <div class="radar-circle circle-3"></div>
+      <div class="radar-blip blip-1"></div>
+      <div class="radar-blip blip-2"></div>
+    </div>
+    <div class="radar-label">SCANNING NODE ACTIVE</div>
+  </div>
+  
+  <div class="terminal-box">
+    <div class="terminal-header font-mono">
+      <span class="term-dot dot-red"></span>
+      <span class="term-dot dot-yellow"></span>
+      <span class="term-dot dot-green"></span>
+      <span class="term-title">Scanner Engine Logs — Terminal</span>
+    </div>
+    <div class="terminal-body font-mono" id="terminal-logs">
+      <div class="term-line">[+] SYSTEM INIT: Initializing secure agent on target: {{ scan.target }}</div>
+      <div class="term-line">[+] RESOLVER: Resolving host configurations...</div>
+      <div class="term-line">[+] PORT SCAN: Activating raw socket wrapper (Nmap)...</div>
+      <div class="term-line cursor">_</div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+
 <!-- Summary cards -->
 <div class="metrics-grid" id="summary-cards">
   <div class="metric-card">
@@ -103,24 +135,65 @@
 {% endif %}
 
 <!-- Vulnerabilities table -->
-<div class="section-title">Vulnerabilities</div>
+<div class="section-title">Vulnerabilities
+  <span class="vuln-legend">
+    <span class="match-badge match-version">version-specific</span> = precise &nbsp;|&nbsp;
+    <span class="match-badge match-generic">generic</span> = service-level guess
+  </span>
+</div>
 {% if scan.vulns %}
 <div class="table-wrap">
-  <table class="data-table">
-    <thead><tr><th>CVE</th><th>Port</th><th>Service</th><th>Severity</th><th>CVSS</th><th>Description</th></tr></thead>
-    <tbody>
-      {% for v in scan.vulns %}
+  <table class="data-table" id="vulns-table">
+    <thead>
       <tr>
+        <th>CVE</th>
+        <th>Port</th>
+        <th>Service</th>
+        <th>Severity</th>
+        <th>CVSS</th>
+        <th>Confidence</th>
+        <th>Match</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% set sorted_vulns = scan.vulns | sort(attribute='confidence', reverse=True) %}
+      {% for v in sorted_vulns %}
+      <tr class="vuln-row vuln-match-{{ v.get('match_type','generic') }}">
         <td class="font-mono"><a href="https://nvd.nist.gov/vuln/detail/{{ v.cve }}" target="_blank" class="cve-link">{{ v.cve }}</a></td>
         <td class="font-mono">{{ v.get('port','—') }}</td>
         <td>{{ v.get('service','—') }}</td>
         <td><span class="badge badge-{{ v.severity }}">{{ v.severity | upper }}</span></td>
-        <td>{{ v.get('cvss','—') }}</td>
-        <td>{{ v.desc }}</td>
+        <td class="font-mono">{{ v.get('cvss', 0) | round(1) }}</td>
+        <td>
+          {% set conf = v.get('confidence', 0) %}
+          <div class="confidence-bar-wrap" title="{{ conf }}% confidence">
+            <div class="confidence-bar" style="width:{{ conf }}%;background:{{ '#00ff88' if conf >= 70 else '#f59e0b' if conf >= 40 else '#ef4444' }}"></div>
+            <span class="confidence-label">{{ conf }}%</span>
+          </div>
+        </td>
+        <td>
+          {% if v.get('match_type') == 'version_specific' %}
+            <span class="match-badge match-version">version-specific</span>
+          {% else %}
+            <span class="match-badge match-generic">generic</span>
+          {% endif %}
+        </td>
+        <td class="vuln-desc">{{ v.desc }}</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
+</div>
+
+<!-- Filter controls -->
+<div class="vuln-filter-bar">
+  <label class="filter-label">
+    <input type="checkbox" id="filter-version-only" onchange="filterVulns()"> Show version-specific only
+  </label>
+  <label class="filter-label" style="margin-left:1.5rem;">
+    <input type="checkbox" id="filter-high-conf" onchange="filterVulns()"> Confidence ≥ 70%
+  </label>
 </div>
 {% else %}
 <p class="text-muted">No vulnerabilities detected{% if scan.status != 'done' %} yet{% endif %}.</p>
@@ -128,12 +201,145 @@
 {% endblock %}
 
 {% block scripts %}
+<style>
+/* ── Confidence bar ─────────────────────────────── */
+.confidence-bar-wrap {
+  position: relative;
+  background: rgba(255,255,255,0.07);
+  border-radius: 4px;
+  height: 18px;
+  min-width: 90px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+.confidence-bar {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  border-radius: 4px;
+  opacity: 0.35;
+  transition: width 0.5s ease;
+}
+.confidence-label {
+  position: relative;
+  z-index: 1;
+  font-size: 0.78rem;
+  font-family: var(--font-mono, monospace);
+  padding: 0 6px;
+  color: #e5e7eb;
+}
+
+/* ── Match badges ──────────────────────────────── */
+.match-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  border-radius: 4px;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+.match-version {
+  background: rgba(0,255,136,0.15);
+  color: #00ff88;
+  border: 1px solid rgba(0,255,136,0.3);
+}
+.match-generic {
+  background: rgba(156,163,175,0.15);
+  color: #9ca3af;
+  border: 1px solid rgba(156,163,175,0.25);
+}
+
+/* ── Section title legend ──────────────────────── */
+.vuln-legend {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: #6b7280;
+  margin-left: 0.8rem;
+  vertical-align: middle;
+}
+
+/* ── Filter bar ────────────────────────────────── */
+.vuln-filter-bar {
+  margin: 0.6rem 0 1.5rem;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.filter-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: #9ca3af;
+  cursor: pointer;
+}
+.filter-label input[type=checkbox] {
+  accent-color: #00ff88;
+  width: 14px;
+  height: 14px;
+}
+
+/* ── Hidden rows ───────────────────────────────── */
+.vuln-row.hidden { display: none; }
+</style>
+
+<script>
+function filterVulns() {
+  var versionOnly = document.getElementById('filter-version-only').checked;
+  var highConf    = document.getElementById('filter-high-conf').checked;
+  var rows        = document.querySelectorAll('#vulns-table tbody .vuln-row');
+  rows.forEach(function(row) {
+    var isVersion = row.classList.contains('vuln-match-version_specific');
+    var confEl    = row.querySelector('.confidence-label');
+    var conf      = confEl ? parseInt(confEl.textContent) : 0;
+
+    var show = true;
+    if (versionOnly && !isVersion) show = false;
+    if (highConf && conf < 70)     show = false;
+
+    row.classList.toggle('hidden', !show);
+  });
+}
+</script>
+
 <script>
 (function() {
   var scanId   = {{ scan.id }};
   var status   = "{{ scan.status }}";
   var banner   = document.getElementById('status-banner');
   if (status === 'done' || status === 'error') return;
+
+
+  // Pseudo-hacker logs animation
+  var logMessages = [
+    "[+] SCAN ACTIVE: Pinging host and listening for TCP responses...",
+    "[~] CACHE LOOKUP: Checking local NvdCache for fast vulnerability correlations...",
+    "[+] THREAT INTEL: Contacting Shodan Nodes...",
+    "[+] ENRICHMENT: Fetching live CVE records from NIST National Vulnerability Database...",
+    "[+] PARSER: Re-evaluating composite CVSS scoring...",
+    "[+] REPORTING: Compiling ReportLab PDF and CSV templates...",
+    "[*] ALERT ENGINE: Checking critical CVSS thresholds for SMTP warnings...",
+    "[~] DATABASE: Writing cache results and updating scanner history..."
+  ];
+  var logIndex = 0;
+  var termBody = document.getElementById('terminal-logs');
+  
+  var logInterval = null;
+  if (termBody) {
+    logInterval = setInterval(function() {
+      if (logIndex >= logMessages.length) {
+        clearInterval(logInterval);
+        return;
+      }
+      var line = document.createElement('div');
+      line.className = 'term-line';
+      line.textContent = logMessages[logIndex++];
+      termBody.insertBefore(line, termBody.lastElementChild);
+      termBody.scrollTop = termBody.scrollHeight;
+    }, 1800);
+  }
 
   var interval = setInterval(function() {
     fetch('/scan/' + scanId + '/status')
@@ -143,6 +349,7 @@
         document.getElementById('m-vulns').textContent = d.vulns;
         if (d.status === 'done' || d.status === 'error') {
           clearInterval(interval);
+          if (logInterval) clearInterval(logInterval);
           if (banner) banner.style.display = 'none';
           location.reload();
         }
@@ -150,4 +357,5 @@
   }, 3000);
 })();
 </script>
+
 {% endblock %}
