@@ -59,7 +59,8 @@ graph TD
 ## Screenshots & Demonstration
 
 * **Project Demonstration (Walkthrough)**:
-  ![CyberGuard Demonstration](docs/demo.webp)
+  <video src="docs/demo.mp4" width="100%" controls autoplay loop muted></video>
+
 
 * **Dashboard (Desktop View)**:
   ![Dashboard Desktop](docs/screenshots/dashboard.png)
