@@ -59,7 +59,7 @@ graph TD
 ## Screenshots & Demonstration
 
 * **Project Demonstration (Walkthrough)**:
-  ![CyberGuard Demonstration](docs/recordings/demo.webp)
+  ![CyberGuard Demonstration](docs/demo.webp)
 
 * **Dashboard (Desktop View)**:
   ![Dashboard Desktop](docs/screenshots/dashboard.png)
