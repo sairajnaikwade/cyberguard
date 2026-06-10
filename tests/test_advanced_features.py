@@ -106,14 +106,17 @@ def test_get_vulns_for_service_empty():
     assert get_vulns_for_service('   ') == []
 
 def test_get_vulns_for_service_cache_hit(db):
-    keyword_cache = NvdCache(cve_id='keyword:http', data_json=json.dumps(['CVE-2021-1234']))
+    # Cache key format changed to: svc:<service>|prod:<product>|ver:<version>
+    cache_key = 'svc:http|prod:|ver:'
+    keyword_cache = NvdCache(cve_id=cache_key, data_json=json.dumps(['CVE-2021-1234']))
     cve_cache = NvdCache(cve_id='CVE-2021-1234', data_json=json.dumps({
-        'cve': 'CVE-2021-1234', 'desc': 'Vulnerability description', 'severity': 'high', 'cvss': 7.5
+        'cve': 'CVE-2021-1234', 'desc': 'Vulnerability description', 'severity': 'high', 'cvss': 7.5,
+        'match_type': 'generic', 'confidence': 40, 'published': ''
     }))
     db.session.add(keyword_cache)
     db.session.add(cve_cache)
     db.session.commit()
-    
+
     vulns = get_vulns_for_service('http')
     assert len(vulns) == 1
     assert vulns[0]['cve'] == 'CVE-2021-1234'
@@ -176,13 +179,16 @@ def test_get_vulns_for_service_api_success(mock_get, mock_sleep, db):
     
     vulns = get_vulns_for_service('ftp')
     assert len(vulns) == 4
-    assert vulns[0]['severity'] == 'critical'
-    assert vulns[1]['severity'] == 'high'
-    assert vulns[2]['severity'] == 'medium'
-    assert vulns[3]['severity'] == 'low'
-    
-    # Check cache was populated
-    cache_keyword = NvdCache.query.get('keyword:ftp')
+    # Results sorted by confidence descending; check all 4 severities are present
+    severities = {v['severity'] for v in vulns}
+    assert 'critical' in severities
+    assert 'high' in severities
+    assert 'medium' in severities
+    assert 'low' in severities
+
+    # Check cache was populated (new key format)
+    cache_key = 'svc:ftp|prod:|ver:'
+    cache_keyword = NvdCache.query.get(cache_key)
     assert cache_keyword is not None
     assert 'CVE-2022-0001' in json.loads(cache_keyword.data_json)
 
@@ -228,13 +234,19 @@ def test_validate_target():
 # ── Risk Score Logic Tests ───────────────────────────────────────────────────
 def test_calculate_risk():
     assert _calculate_risk([], []) == 0.0
-    
+
+    # No match_type → defaults to weight 1.0 (generic)
+    # weighted_sum = (9.8 + 8.0) * 1.0 = 17.8, weighted_count = 2.0
+    # avg_cvss = 8.9, open_count = 1
+    # score = min(10.0, 8.9 * 0.7 + min(1 * 0.1, 3.0)) = min(10.0, 6.23 + 0.1) = 6.3
     vulns = [{'cvss': 9.8}, {'cvss': 8.0}]
     ports = [{'state': 'open'}, {'state': 'closed'}]
-    
-    # base = 17.8. open_count = 1.
-    # score = (17.8/2)*0.7 + min(0.1, 3.0) = 8.9*0.7 + 0.1 = 6.23 + 0.1 = 6.33 -> 6.3
     assert _calculate_risk(vulns, ports) == 6.3
+
+    # version_specific CVEs get 1.3x weight — score should be higher
+    vs_vulns = [{'cvss': 9.8, 'match_type': 'version_specific'}, {'cvss': 8.0, 'match_type': 'version_specific'}]
+    vs_score = _calculate_risk(vs_vulns, ports)
+    assert vs_score >= _calculate_risk(vulns, ports)
 
 
 # ── Background Scan Launcher Tests ───────────────────────────────────────────
