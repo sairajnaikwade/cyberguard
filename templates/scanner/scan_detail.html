@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Scan #{{ scan.id }} — CyberGuard{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Scan Result <span class="text-muted">#{{ scan.id }}</span></h1>
+  <div class="header-actions">
+    {% if scan.status == 'done' %}
+    <a href="{{ url_for('reports.export_csv', scan_id=scan.id) }}" class="btn btn-outline btn-sm">Export CSV</a>
+    <a href="{{ url_for('reports.export_pdf', scan_id=scan.id) }}" class="btn btn-outline btn-sm">Export PDF</a>
+    {% endif %}
+    <a href="{{ url_for('scanner.history') }}" class="btn btn-sm">← History</a>
+  </div>
+</div>
+
+<!-- Status banner (hidden once done) -->
+<div id="status-banner" class="status-banner status-banner-{{ scan.status }}"
+     {% if scan.status in ('done','error') %}style="display:none"{% endif %}>
+  <span class="spinner"></span> Scan running — this page updates automatically…
+</div>
+
+<!-- Summary cards -->
+<div class="metrics-grid" id="summary-cards">
+  <div class="metric-card">
+    <div class="metric-label">Target</div>
+    <div class="metric-value font-mono text-sm">{{ scan.target }}</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Open Ports</div>
+    <div class="metric-value text-blue" id="m-ports">{{ scan.open_ports | length }}</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Vulnerabilities</div>
+    <div class="metric-value text-red" id="m-vulns">{{ scan.vulns | length }}</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Risk Score</div>
+    <div class="metric-value" id="m-risk">
+      <span class="risk-badge risk-{{ 'critical' if scan.risk_score >= 9 else 'high' if scan.risk_score >= 7 else 'medium' if scan.risk_score >= 4 else 'low' }}">
+        {{ scan.risk_score }}
+      </span>
+    </div>
+  </div>
+</div>
+
+{% if scan.status == 'error' %}
+<div class="alert alert-danger">Error: {{ scan.error_msg }}</div>
+{% endif %}
+
+<!-- Shodan Threat Intelligence Section -->
+{% if scan.status == 'done' and scan.shodan_data %}
+<div class="section-title">Threat Intelligence (Shodan)</div>
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr><th>ISP / ASN</th><th>Organization</th><th>Country / City</th><th>Shodan Ports</th><th>Hostnames</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>{{ scan.shodan_data.get('isp', '—') }} (ASN: {{ scan.shodan_data.get('asn', '—') }})</td>
+        <td>{{ scan.shodan_data.get('org', '—') }}</td>
+        <td>{{ scan.shodan_data.get('country', '—') }} / {{ scan.shodan_data.get('city', '—') }}</td>
+        <td class="font-mono text-green">
+          {% if scan.shodan_data.get('ports') %}
+            {{ scan.shodan_data.get('ports') | join(', ') }}
+          {% else %}
+            None reported
+          {% endif %}
+        </td>
+        <td>
+          {% if scan.shodan_data.get('hostnames') %}
+            {{ scan.shodan_data.get('hostnames') | join(', ') }}
+          {% else %}
+            —
+          {% endif %}
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<!-- Ports table -->
+<div class="section-title">Open Ports</div>
+{% if scan.open_ports %}
+<div class="table-wrap">
+  <table class="data-table">
+    <thead><tr><th>Port</th><th>Protocol</th><th>Service</th><th>Product</th><th>Version</th></tr></thead>
+    <tbody>
+      {% for p in scan.open_ports %}
+      <tr>
+        <td class="font-mono text-green">{{ p.port }}</td>
+        <td>{{ p.proto }}</td>
+        <td>{{ p.service }}</td>
+        <td>{{ p.get('product','—') }}</td>
+        <td>{{ p.get('version','—') }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted">No open ports detected{% if scan.status != 'done' %} yet{% endif %}.</p>
+{% endif %}
+
+<!-- Vulnerabilities table -->
+<div class="section-title">Vulnerabilities</div>
+{% if scan.vulns %}
+<div class="table-wrap">
+  <table class="data-table">
+    <thead><tr><th>CVE</th><th>Port</th><th>Service</th><th>Severity</th><th>CVSS</th><th>Description</th></tr></thead>
+    <tbody>
+      {% for v in scan.vulns %}
+      <tr>
+        <td class="font-mono"><a href="https://nvd.nist.gov/vuln/detail/{{ v.cve }}" target="_blank" class="cve-link">{{ v.cve }}</a></td>
+        <td class="font-mono">{{ v.get('port','—') }}</td>
+        <td>{{ v.get('service','—') }}</td>
+        <td><span class="badge badge-{{ v.severity }}">{{ v.severity | upper }}</span></td>
+        <td>{{ v.get('cvss','—') }}</td>
+        <td>{{ v.desc }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted">No vulnerabilities detected{% if scan.status != 'done' %} yet{% endif %}.</p>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  var scanId   = {{ scan.id }};
+  var status   = "{{ scan.status }}";
+  var banner   = document.getElementById('status-banner');
+  if (status === 'done' || status === 'error') return;
+
+  var interval = setInterval(function() {
+    fetch('/scan/' + scanId + '/status')
+      .then(function(r){ return r.json(); })
+      .then(function(d) {
+        document.getElementById('m-ports').textContent = d.open_ports;
+        document.getElementById('m-vulns').textContent = d.vulns;
+        if (d.status === 'done' || d.status === 'error') {
+          clearInterval(interval);
+          if (banner) banner.style.display = 'none';
+          location.reload();
+        }
+      });
+  }, 3000);
+})();
+</script>
+{% endblock %}

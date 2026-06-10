@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}New Scan — CyberGuard{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">New Vulnerability Scan</h1>
+</div>
+
+<div class="form-card">
+  <form method="POST" action="{{ url_for('scanner.new_scan') }}" id="scan-form">
+    <div class="form-group">
+      <label class="form-label">Target (IP or hostname)</label>
+      <input type="text" name="target" class="form-input font-mono"
+             placeholder="e.g. 192.168.1.1 or example.com" required autocomplete="off"/>
+      <div class="form-hint">Enter a valid IPv4 address or hostname. Never scan targets without permission.</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Scan Type</label>
+      <div class="scan-type-grid">
+        <label class="scan-type-card">
+          <input type="radio" name="scan_type" value="quick" checked/>
+          <div class="scan-type-inner">
+            <div class="scan-type-icon">⚡</div>
+            <div class="scan-type-name">Quick</div>
+            <div class="scan-type-desc">Top 100 ports, fast</div>
+          </div>
+        </label>
+        <label class="scan-type-card">
+          <input type="radio" name="scan_type" value="full"/>
+          <div class="scan-type-inner">
+            <div class="scan-type-icon">🔍</div>
+            <div class="scan-type-name">Full</div>
+            <div class="scan-type-desc">All 65535 ports</div>
+          </div>
+        </label>
+        <label class="scan-type-card">
+          <input type="radio" name="scan_type" value="vuln"/>
+          <div class="scan-type-inner">
+            <div class="scan-type-icon">🎯</div>
+            <div class="scan-type-name">Vuln</div>
+            <div class="scan-type-desc">Service detection + CVEs</div>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <div class="warning-box">
+      ⚠ Only scan systems you own or have explicit written permission to test. Unauthorised scanning may be illegal.
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-full">Launch Scan →</button>
+  </form>
+</div>
+{% endblock %}

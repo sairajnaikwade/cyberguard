@@ -1,0 +1,42 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  cyberguard:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - SECRET_KEY=change-me-in-production
+      - FLASK_DEBUG=false
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - ./instance:/app/instance   # persists the SQLite database
+    depends_on:
+      - redis
+    restart: unless-stopped
+    cap_add:
+      - NET_RAW                    # required for nmap SYN scans
+      - NET_ADMIN
+
+  celery_worker:
+    build: .
+    command: celery -A celery_worker.celery_app worker --loglevel=info
+    environment:
+      - SECRET_KEY=change-me-in-production
+      - FLASK_DEBUG=false
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - C_FORCE_ROOT=1             # allow running celery as root inside docker
+    volumes:
+      - ./instance:/app/instance   # shares the SQLite database
+    depends_on:
+      - redis
+    restart: unless-stopped
+    cap_add:
+      - NET_RAW                    # required for nmap SYN scans
+      - NET_ADMIN

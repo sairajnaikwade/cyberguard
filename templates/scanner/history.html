@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Scan History — CyberGuard{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Scan History</h1>
+  <a href="{{ url_for('scanner.new_scan') }}" class="btn btn-primary">+ New Scan</a>
+</div>
+
+{% if scans.items %}
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr><th>#</th><th>Target</th><th>Type</th><th>Ports</th><th>Vulns</th><th>Risk</th><th>Status</th><th>Started</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for s in scans.items %}
+      <tr>
+        <td class="text-muted">{{ s.id }}</td>
+        <td class="font-mono">{{ s.target }}</td>
+        <td><span class="badge badge-blue">{{ s.scan_type }}</span></td>
+        <td>{{ s.open_ports | length }}</td>
+        <td>{{ s.vulns | length }}</td>
+        <td>
+          <span class="risk-badge risk-{{ 'critical' if s.risk_score >= 9 else 'high' if s.risk_score >= 7 else 'medium' if s.risk_score >= 4 else 'low' }}">
+            {{ s.risk_score }}
+          </span>
+        </td>
+        <td><span class="status-badge status-{{ s.status }}">{{ s.status }}</span></td>
+        <td class="text-muted text-sm">{{ s.started_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td class="actions">
+          <a href="{{ url_for('scanner.scan_detail', scan_id=s.id) }}" class="btn btn-xs">View</a>
+          {% if s.status == 'done' %}
+          <a href="{{ url_for('reports.export_csv', scan_id=s.id) }}" class="btn btn-xs btn-outline">CSV</a>
+          <a href="{{ url_for('reports.export_pdf', scan_id=s.id) }}" class="btn btn-xs btn-outline">PDF</a>
+          {% endif %}
+          <form method="POST" action="{{ url_for('scanner.delete_scan', scan_id=s.id) }}" style="display:inline"
+                onsubmit="return confirm('Delete this scan?')">
+            <button type="submit" class="btn btn-xs btn-danger">Del</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Pagination -->
+{% if scans.pages > 1 %}
+<div class="pagination">
+  {% if scans.has_prev %}<a href="{{ url_for('scanner.history', page=scans.prev_num) }}" class="btn btn-sm btn-outline">← Prev</a>{% endif %}
+  <span class="page-info">Page {{ scans.page }} of {{ scans.pages }}</span>
+  {% if scans.has_next %}<a href="{{ url_for('scanner.history', page=scans.next_num) }}" class="btn btn-sm btn-outline">Next →</a>{% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">📋</div>
+  <p>No scan history. <a href="{{ url_for('scanner.new_scan') }}">Start scanning →</a></p>
+</div>
+{% endif %}
+{% endblock %}

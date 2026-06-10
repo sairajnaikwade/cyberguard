@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}CyberGuard{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+{% if current_user.is_authenticated %}
+<nav class="navbar">
+  <a href="{{ url_for('scanner.dashboard') }}" class="nav-brand">
+    <span class="brand-icon">⬡</span> CyberGuard
+  </a>
+  <div class="nav-links">
+    <a href="{{ url_for('scanner.new_scan') }}" class="nav-link">New Scan</a>
+    <a href="{{ url_for('scanner.list_schedules') }}" class="nav-link">Schedules</a>
+    <a href="{{ url_for('scanner.history') }}" class="nav-link">History</a>
+    {% if current_user.is_admin %}
+    <a href="{{ url_for('admin.dashboard') }}" class="nav-link" style="color: var(--blue);">Admin</a>
+    {% endif %}
+    <span class="nav-user">{{ current_user.username }}</span>
+    <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">Logout</a>
+  </div>
+</nav>
+{% endif %}
+
+<main class="main-content">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-wrap">
+        {% for cat, msg in messages %}
+          <div class="alert alert-{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

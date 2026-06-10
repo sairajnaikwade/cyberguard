@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — CyberGuard{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Dashboard</h1>
+  <a href="{{ url_for('scanner.new_scan') }}" class="btn btn-primary">+ New Scan</a>
+</div>
+
+<div class="metrics-grid">
+  <div class="metric-card">
+    <div class="metric-label">Total Scans</div>
+    <div class="metric-value text-green">{{ total_scans }}</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Vulnerabilities Found</div>
+    <div class="metric-value text-red">{{ total_vulns }}</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Recent Targets</div>
+    <div class="metric-value text-blue">{{ recent | length }}</div>
+  </div>
+</div>
+
+<div class="section-title">Recent Scans</div>
+{% if recent %}
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr><th>Target</th><th>Type</th><th>Ports</th><th>Vulns</th><th>Risk</th><th>Status</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for s in recent %}
+      <tr>
+        <td class="font-mono">{{ s.target }}</td>
+        <td><span class="badge badge-blue">{{ s.scan_type }}</span></td>
+        <td>{{ s.open_ports | length }}</td>
+        <td>{{ s.vulns | length }}</td>
+        <td>
+          <span class="risk-badge risk-{{ 'critical' if s.risk_score >= 9 else 'high' if s.risk_score >= 7 else 'medium' if s.risk_score >= 4 else 'low' }}">
+            {{ s.risk_score }}
+          </span>
+        </td>
+        <td><span class="status-badge status-{{ s.status }}">{{ s.status }}</span></td>
+        <td class="actions">
+          <a href="{{ url_for('scanner.scan_detail', scan_id=s.id) }}" class="btn btn-xs">View</a>
+          <a href="{{ url_for('reports.export_csv', scan_id=s.id) }}" class="btn btn-xs btn-outline">CSV</a>
+          <a href="{{ url_for('reports.export_pdf', scan_id=s.id) }}" class="btn btn-xs btn-outline">PDF</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">🛡</div>
+  <p>No scans yet. <a href="{{ url_for('scanner.new_scan') }}">Run your first scan →</a></p>
+</div>
+{% endif %}
+{% endblock %}

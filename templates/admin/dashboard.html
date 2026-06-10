@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard — CyberGuard{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Admin Dashboard</h1>
+</div>
+
+<div class="metrics-grid">
+  <div class="metric-card">
+    <div class="metric-label">Total Users</div>
+    <div class="metric-value text-blue">{{ total_users }}</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">System-Wide Scans</div>
+    <div class="metric-value text-green">{{ total_scans }}</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Total CVEs Detected</div>
+    <div class="metric-value text-red">{{ total_vulns }}</div>
+  </div>
+</div>
+
+<div class="section-title">User Management</div>
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr><th>ID</th><th>Username</th><th>Email</th><th>Role</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td>{{ u.username }}</td>
+        <td>{{ u.email }}</td>
+        <td>
+          {% if u.is_admin %}
+          <span class="badge badge-blue">Admin</span>
+          {% else %}
+          <span class="badge badge-low">User</span>
+          {% endif %}
+        </td>
+        <td class="actions">
+          {% if u.id != current_user.id %}
+          <form method="POST" action="{{ url_for('admin.toggle_admin', user_id=u.id) }}">
+            <button type="submit" class="btn btn-xs {% if u.is_admin %}btn-danger{% else %}btn-primary{% endif %}">
+              {% if u.is_admin %}Demote{% else %}Promote{% endif %}
+            </button>
+          </form>
+          {% else %}
+          <span class="text-muted text-sm">Self</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="section-title">All System Scans</div>
+{% if scans %}
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr><th>ID</th><th>User</th><th>Target</th><th>Type</th><th>Risk</th><th>Status</th><th>Started</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for s in scans %}
+      <tr>
+        <td class="text-muted">{{ s.id }}</td>
+        <td class="font-mono text-blue">{{ s.user.username }}</td>
+        <td class="font-mono">{{ s.target }}</td>
+        <td><span class="badge badge-blue">{{ s.scan_type }}</span></td>
+        <td>
+          <span class="risk-badge risk-{{ 'critical' if s.risk_score >= 9 else 'high' if s.risk_score >= 7 else 'medium' if s.risk_score >= 4 else 'low' }}">
+            {{ s.risk_score }}
+          </span>
+        </td>
+        <td><span class="status-badge status-{{ s.status }}">{{ s.status }}</span></td>
+        <td class="text-muted text-sm">{{ s.started_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td class="actions">
+          <a href="{{ url_for('scanner.scan_detail', scan_id=s.id) }}" class="btn btn-xs">View</a>
+          <form method="POST" action="{{ url_for('admin.delete_scan', scan_id=s.id) }}"
+                onsubmit="return confirm('Delete this scan system-wide?')">
+            <button type="submit" class="btn btn-xs btn-danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted">No scans run in the system yet.</p>
+{% endif %}
+{% endblock %}
