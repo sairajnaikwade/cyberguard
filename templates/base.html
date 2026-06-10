@@ -15,9 +15,10 @@
     <span class="brand-icon">⬡</span> CyberGuard
   </a>
   <div class="nav-links">
-    <a href="{{ url_for('scanner.new_scan') }}" class="nav-link">New Scan</a>
-    <a href="{{ url_for('scanner.list_schedules') }}" class="nav-link">Schedules</a>
-    <a href="{{ url_for('scanner.history') }}" class="nav-link">History</a>
+    <a href="{{ url_for('scanner.dashboard') }}" class="nav-link {% if request.endpoint == 'scanner.dashboard' %}nav-link-active{% endif %}">Dashboard</a>
+    <a href="{{ url_for('scanner.new_scan') }}" class="nav-link {% if request.endpoint == 'scanner.new_scan' %}nav-link-active{% endif %}">New Scan</a>
+    <a href="{{ url_for('scanner.list_schedules') }}" class="nav-link {% if request.endpoint == 'scanner.list_schedules' %}nav-link-active{% endif %}">Schedules</a>
+    <a href="{{ url_for('scanner.history') }}" class="nav-link {% if request.endpoint == 'scanner.history' %}nav-link-active{% endif %}">History</a>
     {% if current_user.is_admin %}
     <a href="{{ url_for('admin.dashboard') }}" class="nav-link" style="color: var(--blue);">Admin</a>
     {% endif %}
